@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+option go_package = "./calc";
+
+service Calc {
+  rpc Equation(Input) returns (Output) {}
+}
+
+message Input {
+  string arithmitic = 1;
+}
+
+message Output {
+  int64 result = 1;
+}

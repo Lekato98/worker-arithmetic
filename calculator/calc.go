@@ -1,11 +1,56 @@
 package calculator
 
-import "log"
+import (
+	"log"
+	"sync"
+)
 
 type BasicEquation struct {
 	x  int64
 	y  int64
 	op string
+}
+
+type Queue[T any] struct {
+	queue []T
+	Front func() T
+	Push  func(T)
+	Empty func() bool
+}
+
+type Task func() (any, error)
+
+type Worker struct {
+	readerChan <-chan Task
+	resultChan chan<- any
+	errChan    chan<- error
+}
+
+func (w *Worker) Run() {
+	w.readerChan = make(<-chan Task, 1)
+	w.resultChan = make(chan<- any, 1)
+	w.errChan = make(chan<- error, 1)
+
+	go func() {
+		for task := range w.readerChan {
+			// TODO recover gracefully
+			// TODO maybe add quit signal to terminate the routine
+			if result, err := task(); err != nil {
+				w.errChan <- err
+			} else {
+				w.resultChan <- result
+			}
+		}
+	}()
+}
+
+type WorkerPool struct {
+	sync.Mutex
+	numberOfWorkers int64
+	pool            Queue[Worker]
+	busy            Queue[Worker]
+	tasks           Queue[Task]
+	DoTask          Task
 }
 
 var workers = make([]func(read chan BasicEquation) chan int64, 0)
